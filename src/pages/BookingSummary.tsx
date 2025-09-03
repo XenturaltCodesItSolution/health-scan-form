@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, User, Package, Mail, Phone, MapPin, CheckCircle } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import { ArrowLeft, User, Package, Mail, Phone, MapPin, CheckCircle, Heart, Sparkles, Calendar } from "lucide-react";
 
 interface BookingData {
   email: string;
@@ -21,6 +23,7 @@ interface BookingData {
 }
 
 export default function BookingSummary() {
+  const [isConfirmed, setIsConfirmed] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const bookingData = location.state as BookingData;
@@ -33,6 +36,87 @@ export default function BookingSummary() {
   const handleGoBack = () => {
     navigate("/");
   };
+
+  const handleConfirmBooking = () => {
+    setIsConfirmed(true);
+    
+    toast({
+      title: "🎉 Congratulations!",
+      description: "Your healthcare package booking has been confirmed successfully!",
+    });
+
+    // Scroll to top to show the congratulations message
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  if (isConfirmed) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary/10 via-accent/5 to-background py-8 px-4">
+        <div className="max-w-2xl mx-auto">
+          <Card className="shadow-medical border-0 bg-gradient-card text-center">
+            <CardHeader className="space-y-6 pb-8">
+              <div className="mx-auto relative">
+                <div className="w-24 h-24 bg-gradient-primary rounded-full flex items-center justify-center animate-pulse">
+                  <CheckCircle className="w-12 h-12 text-white" />
+                </div>
+                <div className="absolute -top-2 -right-2">
+                  <Sparkles className="w-8 h-8 text-yellow-400 animate-bounce" />
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <CardTitle className="text-4xl font-bold bg-gradient-hero bg-clip-text text-transparent">
+                  🎉 Congratulations!
+                </CardTitle>
+                <CardDescription className="text-xl text-muted-foreground">
+                  Your healthcare journey begins now
+                </CardDescription>
+              </div>
+            </CardHeader>
+
+            <CardContent className="space-y-6 pb-8">
+              <div className="bg-gradient-primary/10 rounded-2xl p-6 space-y-4">
+                <div className="flex items-center justify-center gap-2 text-primary">
+                  <Heart className="w-5 h-5" />
+                  <span className="font-semibold">Booking Confirmed Successfully</span>
+                  <Heart className="w-5 h-5" />
+                </div>
+                
+                <p className="text-muted-foreground leading-relaxed">
+                  Thank you for choosing our healthcare services! Your comprehensive health checkup packages 
+                  have been booked and our team will contact you within 24 hours to schedule your appointment.
+                </p>
+
+                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                  <Calendar className="w-4 h-4" />
+                  <span>Booking ID: HC-{Date.now().toString().slice(-6)}</span>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="font-semibold text-lg">What's Next?</h4>
+                <div className="text-sm text-muted-foreground space-y-2">
+                  <p>✅ You will receive a confirmation email shortly</p>
+                  <p>✅ Our team will call you to schedule your appointment</p>
+                  <p>✅ Prepare by fasting 12 hours before your test (if required)</p>
+                  <p>✅ Carry a valid ID proof on the day of your visit</p>
+                </div>
+              </div>
+
+              <div className="pt-4">
+                <Button 
+                  onClick={handleGoBack}
+                  className="w-full h-12 text-base bg-gradient-primary hover:shadow-medical transition-all duration-300"
+                >
+                  Book Another Package
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-primary/5 py-8 px-4">
@@ -135,6 +219,7 @@ export default function BookingSummary() {
                 Back to Form
               </Button>
               <Button 
+                onClick={handleConfirmBooking}
                 className="flex-1 h-12 text-base bg-gradient-primary hover:shadow-medical transition-all duration-300"
               >
                 Confirm Booking
