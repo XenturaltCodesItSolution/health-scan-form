@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
@@ -8,8 +9,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { PackageSelector } from "@/components/PackageSelector";
 import { toast } from "@/hooks/use-toast";
-import { Stethoscope, Users, Mail, Phone, MapPin } from "lucide-react";
+import { Stethoscope, Users, Mail, Phone, MapPin, ShoppingCart } from "lucide-react";
 
 const healthPackages = [
   { id: "1", name: "Aarogyam Winter Basic with USTSH", price: 1199 },
@@ -50,7 +52,6 @@ const healthPackages = [
 ];
 
 const formSchema = z.object({
-  package: z.string().min(1, { message: "Please select a health package." }),
   members: z.string().min(1, { message: "Please select number of members." }),
   email: z.string().email({ message: "Please enter a valid email address." }),
   phone: z.string().min(10, { message: "Please enter a valid phone number." }),
@@ -58,12 +59,12 @@ const formSchema = z.object({
 });
 
 export function HealthcareBookingForm() {
-  const [selectedPackage, setSelectedPackage] = useState<typeof healthPackages[0] | null>(null);
+  const navigate = useNavigate();
+  const [memberPackages, setMemberPackages] = useState<Record<number, string[]>>({});
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      package: "",
       members: "",
       email: "",
       phone: "",
@@ -71,35 +72,71 @@ export function HealthcareBookingForm() {
     },
   });
 
+  const memberCount = parseInt(form.watch("members") || "0");
+
+  const handlePackageToggle = (memberNumber: number, packageId: string) => {
+    setMemberPackages(prev => {
+      const currentPackages = prev[memberNumber] || [];
+      const isSelected = currentPackages.includes(packageId);
+      
+      return {
+        ...prev,
+        [memberNumber]: isSelected
+          ? currentPackages.filter(id => id !== packageId)
+          : [...currentPackages, packageId]
+      };
+    });
+  };
+
+  const calculateTotalAmount = () => {
+    let total = 0;
+    Object.values(memberPackages).forEach(packageIds => {
+      packageIds.forEach(packageId => {
+        const pkg = healthPackages.find(p => p.id === packageId);
+        if (pkg) total += pkg.price;
+      });
+    });
+    return total;
+  };
+
+  const hasSelectedPackages = () => {
+    return Object.values(memberPackages).some(packages => packages.length > 0);
+  };
+
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    const selectedPkg = healthPackages.find(pkg => pkg.id === values.package);
-    const totalPrice = selectedPkg ? selectedPkg.price * parseInt(values.members) : 0;
-    
-    toast({
-      title: "Booking Request Submitted!",
-      description: `Package: ${selectedPkg?.name} for ${values.members} member(s). Total: ₹${totalPrice}`,
-    });
+    if (!hasSelectedPackages()) {
+      toast({
+        title: "No packages selected",
+        description: "Please select at least one package for any member.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    console.log({
-      ...values,
-      packageDetails: selectedPkg,
-      totalPrice,
-    });
-  };
+    const bookingData = {
+      email: values.email,
+      phone: values.phone,
+      address: values.address,
+      memberPackages: Object.entries(memberPackages).map(([memberNum, packageIds]) => ({
+        memberNumber: parseInt(memberNum),
+        packages: packageIds.map(packageId => {
+          const pkg = healthPackages.find(p => p.id === packageId)!;
+          return {
+            id: pkg.id,
+            name: pkg.name,
+            price: pkg.price,
+          };
+        }),
+      })),
+      totalAmount: calculateTotalAmount(),
+    };
 
-  const handlePackageChange = (packageId: string) => {
-    const pkg = healthPackages.find(p => p.id === packageId);
-    setSelectedPackage(pkg || null);
-  };
-
-  const calculateTotal = () => {
-    if (!selectedPackage || !form.watch("members")) return 0;
-    return selectedPackage.price * parseInt(form.watch("members") || "1");
+    navigate("/booking-summary", { state: bookingData });
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-primary/5 py-8 px-4">
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         <Card className="shadow-medical border-0 bg-gradient-card">
           <CardHeader className="text-center space-y-4">
             <div className="mx-auto w-16 h-16 bg-gradient-primary rounded-full flex items-center justify-center">
@@ -109,49 +146,13 @@ export function HealthcareBookingForm() {
               Healthcare Package Booking
             </CardTitle>
             <CardDescription className="text-lg text-muted-foreground">
-              Book your comprehensive health checkup package today
+              Select multiple packages for each family member
             </CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-6">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="package"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-base font-semibold flex items-center gap-2">
-                        <Stethoscope className="w-4 h-4 text-primary" />
-                        Health Package
-                      </FormLabel>
-                      <Select 
-                        onValueChange={(value) => {
-                          field.onChange(value);
-                          handlePackageChange(value);
-                        }}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="h-12 text-left bg-card border-border hover:border-primary transition-colors">
-                            <SelectValue placeholder="Select a health package" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent className="max-h-60">
-                          {healthPackages.map((pkg) => (
-                            <SelectItem key={pkg.id} value={pkg.id} className="py-3">
-                              <div className="flex justify-between items-center w-full">
-                                <span className="font-medium">{pkg.name}</span>
-                                <span className="text-primary font-semibold ml-4">₹{pkg.price}</span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
                 <FormField
                   control={form.control}
                   name="members"
@@ -161,7 +162,13 @@ export function HealthcareBookingForm() {
                         <Users className="w-4 h-4 text-primary" />
                         Number of Members
                       </FormLabel>
-                      <Select onValueChange={field.onChange}>
+                      <Select 
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          // Reset package selections when member count changes
+                          setMemberPackages({});
+                        }}
+                      >
                         <FormControl>
                           <SelectTrigger className="h-12 bg-card border-border hover:border-primary transition-colors">
                             <SelectValue placeholder="Select number of members" />
@@ -179,6 +186,24 @@ export function HealthcareBookingForm() {
                     </FormItem>
                   )}
                 />
+
+                {memberCount > 0 && (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <ShoppingCart className="w-5 h-5 text-primary" />
+                      <h3 className="text-lg font-semibold">Select Packages for Each Member</h3>
+                    </div>
+                    {Array.from({ length: memberCount }, (_, i) => i + 1).map((memberNumber) => (
+                      <PackageSelector
+                        key={memberNumber}
+                        memberNumber={memberNumber}
+                        packages={healthPackages}
+                        selectedPackages={memberPackages[memberNumber] || []}
+                        onPackageToggle={handlePackageToggle}
+                      />
+                    ))}
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField
@@ -247,18 +272,12 @@ export function HealthcareBookingForm() {
                   )}
                 />
 
-                {selectedPackage && form.watch("members") && (
-                  <Card className="bg-gradient-primary/5 border-primary/20">
+                {hasSelectedPackages() && (
+                  <Card className="bg-gradient-primary border-primary/20">
                     <CardContent className="pt-6">
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">Package Price:</span>
-                          <span className="font-medium">₹{selectedPackage.price} × {form.watch("members")}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-lg font-bold">
-                          <span>Total Amount:</span>
-                          <span className="text-primary">₹{calculateTotal()}</span>
-                        </div>
+                      <div className="flex justify-between items-center text-xl font-bold text-white">
+                        <span>Total Amount:</span>
+                        <span>₹{calculateTotalAmount()}</span>
                       </div>
                     </CardContent>
                   </Card>
@@ -267,8 +286,9 @@ export function HealthcareBookingForm() {
                 <Button 
                   type="submit" 
                   className="w-full h-12 text-lg font-semibold bg-gradient-primary hover:shadow-medical transition-all duration-300"
+                  disabled={!hasSelectedPackages()}
                 >
-                  Book Health Package
+                  Review Booking
                 </Button>
               </form>
             </Form>
