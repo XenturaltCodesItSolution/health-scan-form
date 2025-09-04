@@ -143,7 +143,7 @@ export function HealthcareBookingForm() {
               <Stethoscope className="w-8 h-8 text-white" />
             </div>
             <CardTitle className="text-3xl font-bold bg-gradient-hero bg-clip-text text-transparent">
-              Healthcare Package Booking
+              🎉 Special Deal: More Packages, Less Price
             </CardTitle>
             <CardDescription className="text-lg text-muted-foreground">
               Select multiple packages for each family member
