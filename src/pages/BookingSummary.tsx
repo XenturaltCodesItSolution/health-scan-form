@@ -19,7 +19,11 @@ interface BookingData {
       price: number;
     }[];
   }[];
+  subtotal: number;
+  discountPercentage: number;
+  discountAmount: number;
   totalAmount: number;
+  members: number;
 }
 
 export default function BookingSummary() {
@@ -99,7 +103,7 @@ export default function BookingSummary() {
                   <p>✅ You will receive a confirmation email shortly</p>
                   <p>✅ Our team will call you to schedule your appointment</p>
                   <p>✅ Prepare by fasting 12 hours before your test (if required)</p>
-                  <p>✅ Carry a valid ID proof on the day of your visit</p>
+                  <p>✅ Pay later after collocation</p>
                 </div>
               </div>
 
@@ -200,11 +204,40 @@ export default function BookingSummary() {
 
             {/* Total Amount */}
             <Card className="bg-gradient-primary border-primary/20">
-              <CardContent className="pt-6">
-                <div className="flex justify-between items-center text-xl font-bold text-white">
-                  <span>Grand Total:</span>
-                  <span>₹{bookingData.totalAmount}</span>
+              <CardContent className="pt-6 space-y-3">
+                <div className="flex justify-between items-center text-white">
+                  <span className="text-lg">Subtotal:</span>
+                  <span className="text-lg font-semibold">₹{bookingData.subtotal}</span>
                 </div>
+                
+                {bookingData.discountPercentage > 0 && (
+                  <>
+                    <div className="flex justify-between items-center text-green-200">
+                      <span className="text-lg">
+                        Discount ({bookingData.discountPercentage}% for {bookingData.members} members):
+                      </span>
+                      <span className="text-lg font-semibold">-₹{bookingData.discountAmount}</span>
+                    </div>
+                    <div className="border-t border-white/20 pt-3">
+                      <div className="flex justify-between items-center text-xl font-bold text-white">
+                        <span>Final Amount:</span>
+                        <span>₹{bookingData.totalAmount}</span>
+                      </div>
+                    </div>
+                    <div className="mt-3 p-3 bg-white/10 rounded-lg">
+                      <p className="text-sm text-white/90 text-center">
+                        🎉 You saved ₹{bookingData.discountAmount} with our multi-member discount!
+                      </p>
+                    </div>
+                  </>
+                )}
+                
+                {bookingData.discountPercentage === 0 && (
+                  <div className="flex justify-between items-center text-xl font-bold text-white">
+                    <span>Grand Total:</span>
+                    <span>₹{bookingData.totalAmount}</span>
+                  </div>
+                )}
               </CardContent>
             </Card>
 

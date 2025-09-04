@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { PackageSelector } from "@/components/PackageSelector";
 import { toast } from "@/hooks/use-toast";
-import { Stethoscope, Users, Mail, Phone, MapPin, ShoppingCart } from "lucide-react";
+import { Stethoscope, Users, Mail, Phone, MapPin, ShoppingCart, Percent } from "lucide-react";
+import emailjs from "@emailjs/browser";
 
 const healthPackages = [
   { id: "1", name: "Aarogyam Winter Basic with USTSH", price: 1199 },
@@ -89,14 +90,31 @@ export function HealthcareBookingForm() {
   };
 
   const calculateTotalAmount = () => {
-    let total = 0;
+    let subtotal = 0;
     Object.values(memberPackages).forEach(packageIds => {
       packageIds.forEach(packageId => {
         const pkg = healthPackages.find(p => p.id === packageId);
-        if (pkg) total += pkg.price;
+        if (pkg) subtotal += pkg.price;
       });
     });
-    return total;
+    return subtotal;
+  };
+
+  const getDiscountPercentage = () => {
+    const memberCount = parseInt(form.watch("members")) || 0;
+    if (memberCount === 2) return 10;
+    if (memberCount >= 3) return 15;
+    return 0;
+  };
+
+  const calculateDiscountAmount = () => {
+    const subtotal = calculateTotalAmount();
+    const discountPercentage = getDiscountPercentage();
+    return (subtotal * discountPercentage) / 100;
+  };
+
+  const calculateFinalAmount = () => {
+    return calculateTotalAmount() - calculateDiscountAmount();
   };
 
   const hasSelectedPackages = () => {
@@ -128,8 +146,45 @@ export function HealthcareBookingForm() {
           };
         }),
       })),
-      totalAmount: calculateTotalAmount(),
+      subtotal: calculateTotalAmount(),
+      discountPercentage: getDiscountPercentage(),
+      discountAmount: calculateDiscountAmount(),
+      totalAmount: calculateFinalAmount(),
+      members: parseInt(values.members),
     };
+
+    // Send booking notification email
+    const emailData = {
+      to_email: "aarogyamcentre1@gmail.com",
+      customer_email: values.email,
+      customer_phone: values.phone,
+      customer_address: values.address || "Not provided",
+      member_count: values.members,
+      packages_list: Object.entries(memberPackages)
+        .map(([memberNum, packageIds]) => {
+          const packages = packageIds.map(packageId => {
+            const pkg = healthPackages.find(p => p.id === packageId)!;
+            return `${pkg.name} - ₹${pkg.price}`;
+          });
+          return `Member ${memberNum}: ${packages.join(", ")}`;
+        }).join("\n"),
+      subtotal: calculateTotalAmount(),
+      discount_percentage: getDiscountPercentage(),
+      discount_amount: calculateDiscountAmount(),
+      final_amount: calculateFinalAmount(),
+      booking_date: new Date().toLocaleString(),
+    };
+
+    // Initialize EmailJS (you'll need to set up your EmailJS account)
+    emailjs.init("YOUR_EMAILJS_PUBLIC_KEY"); // Replace with your actual public key
+    
+    emailjs.send("YOUR_SERVICE_ID", "YOUR_TEMPLATE_ID", emailData)
+      .then(() => {
+        console.log("Booking notification sent successfully!");
+      })
+      .catch((error) => {
+        console.error("Failed to send booking notification:", error);
+      });
 
     navigate("/booking-summary", { state: bookingData });
   };
@@ -274,11 +329,44 @@ export function HealthcareBookingForm() {
 
                 {hasSelectedPackages() && (
                   <Card className="bg-gradient-primary border-primary/20">
-                    <CardContent className="pt-6">
-                      <div className="flex justify-between items-center text-xl font-bold text-white">
-                        <span>Total Amount:</span>
-                        <span>₹{calculateTotalAmount()}</span>
+                    <CardContent className="pt-6 space-y-3">
+                      <div className="flex justify-between items-center text-white">
+                        <span className="text-lg">Subtotal:</span>
+                        <span className="text-lg font-semibold">₹{calculateTotalAmount()}</span>
                       </div>
+                      
+                      {getDiscountPercentage() > 0 && (
+                        <>
+                          <div className="flex justify-between items-center text-green-200">
+                            <span className="text-lg flex items-center gap-2">
+                              <Percent className="w-4 h-4" />
+                              Discount ({getDiscountPercentage()}%):
+                            </span>
+                            <span className="text-lg font-semibold">-₹{calculateDiscountAmount()}</span>
+                          </div>
+                          <div className="border-t border-white/20 pt-3">
+                            <div className="flex justify-between items-center text-xl font-bold text-white">
+                              <span>Final Amount:</span>
+                              <span>₹{calculateFinalAmount()}</span>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                      
+                      {getDiscountPercentage() === 0 && (
+                        <div className="flex justify-between items-center text-xl font-bold text-white">
+                          <span>Total Amount:</span>
+                          <span>₹{calculateTotalAmount()}</span>
+                        </div>
+                      )}
+                      
+                      {memberCount >= 2 && (
+                        <div className="mt-4 p-3 bg-white/10 rounded-lg">
+                          <p className="text-sm text-white/90 text-center">
+                            🎉 {memberCount === 2 ? "10% discount applied for 2 members!" : "15% discount applied for 3+ members!"}
+                          </p>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 )}
