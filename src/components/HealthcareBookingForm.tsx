@@ -175,10 +175,10 @@ export function HealthcareBookingForm() {
       booking_date: new Date().toLocaleString(),
     };
 
-    // Initialize EmailJS (you'll need to set up your EmailJS account)
-    emailjs.init("YOUR_EMAILJS_PUBLIC_KEY"); // Replace with your actual public key
+    // Initialize EmailJS
+    emailjs.init("c6RF1yTiVVt5zT3iB");
     
-    emailjs.send("YOUR_SERVICE_ID", "YOUR_TEMPLATE_ID", emailData)
+    emailjs.send("znyksGpPI6f8hT0vAXPwX", "YOUR_TEMPLATE_ID", emailData)
       .then(() => {
         console.log("Booking notification sent successfully!");
       })
